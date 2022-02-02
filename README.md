@@ -1,6 +1,6 @@
-# Cheat Sheet Web Engineering 3
+# Cheat Sheet für das Modul Web Engineering 3
 
-## Thenübersicht
+## Themenübersicht
 
 - Introduction / Single Page Application
 
