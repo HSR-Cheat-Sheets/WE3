@@ -1,0 +1,371 @@
+%! Licence = CC BY-NC-SA 4.0
+
+%! Author = mariuszindel
+%! Date = 30. Jan 2022
+%! Project = Cheat-Sheet-Web-Engineering-3
+
+
+\section{ASP .NET}
+Enterprise Framework, Kompilierbare Sprache, Komplett neue Entwicklung, alle Betriebssystem
+
+\subsection{Dependency Injection}
+ASP.NET kommt mit primitiven DI Container.\\
+\textbf{Idee:} Klasse erwähnt welche Interfaces benötigt werden. Ein Resolver sucht im Container nach einer geeigneten Klasse und übergibt diese.
+%\begin{lstlisting}[style=CSharp]
+%public class Startup {
+% public void ConfigureServices(
+%                       IserviceCollection services) {
+%  services.AddTransient<IUserService, UserService>();
+%  services.AddControllers();
+%  services.AddMvc(); }
+%public void Configure(IApplicationBuilder app,
+%                           IHostingEnvironment env) {
+% app.UseRouting();
+% app.UseEndpoints(endpoints => {
+%   endpoints.MapControllers();
+%   endpoints.MapRazorPages();  }); } }
+%\end{lstlisting}
+
+\subsubsection{Lifetime}
+\textbf{Transient:} jedes Mal erstellt wenn angefordert. besten geeignet für leichte, zustandslose Dienste.\\
+\textbf{Scoped:} Erstellt 1x pro Request.\\
+\textbf{Singleton:} Erstellt bei 1. mal requested. nachfolgende Anfragen dieselbe Instanz verwenden
+
+\subsubsection{Captive Dependency}
+Komponenten dürfen nur Komponenten mit gleicher oder längerer Lebensdauer Injecten lassen.
+
+\subsection{Projekt-Struktur}
+\textbf{wwwroot:} Statische Inhalte (CSS,JS,HTML)\\
+\textbf{appsettings.json:} Einstellungen der Webseite (Connection-String für DB / AllowedHosts)\\
+\textbf{Programm.cs:} Einstiegspunkt der WebApp\\
+\textbf{Startup.cs:} Konfiguriert die WebApp
+
+\subsection{Razor}
+%\begin{lstlisting}[style=CSharp]
+%@{  var name = "John Doe";
+%    var weekDay = DateTime.Now.DayOfWeek; }
+%<p>Hello @name, today is @weekDay</p>
+%@foreach(var item of todos) {
+%    <p>@item.text</p>
+%}
+%@if(/* ... */)
+%\end{lstlisting}
+
+\subsubsection{Wichtige Dateien}
+\textbf{Shared/\_layout.cshtml:} Generelles layout der App. Definiert Sections (Placeholders)
+\begin{lstlisting}[style=CSharp]
+@RenderBody() // Platz für Content
+@RenderSection("Nav", false); // Platz für Section
+@section Nav{ /* ... */ }
+\end{lstlisting}
+\textbf{\_ViewStart.cshtml:} Hierarchisch, Code welcher vor den Razor-Files ausgeführt wird.
+\textbf{\_ViewImports.cshtml:} Hierarchisch, Namespaces / Tag-Helpers können registriert werden.
+
+%\subsubsection{Partials}
+%Markup Files, verwendet innerhalb von anderen Markup Files.
+%Bessere Aufteilbarkeit und Wiederverwendbarkeit.
+%\begin{lstlisting}[style=CSharp]
+%<partial name="_Card" for="Card1" />
+%<partial name="_Card" model="..." />
+%\end{lstlisting}
+
+%\subsubsection{View Components}
+%Mächtigere Variante von Partials.
+%Beinhalten Logik, können Daten laden / auf bearbeiten.
+%Rendert ein Teil der Webseite.\\
+%\textbf{Unterschied zu Pages:} Rendern nur ein Teil der Seite.\\
+%\textbf{Location:} \textit{/ViewComponents}\\
+%Razor-File: \textit{Pages/Shared/Components/[ComponentName]/[ViewName]}
+%\begin{lstlisting}[style=CSharp]
+%public class ToDoList: ViewComponent {
+%    public string[] Todos { get; set; }
+%    public ToDoList() { /* ... */ }
+%    public IViewComponentResult Invoke() {
+%        // /Pages/Shared/Components/TodoList/Default
+%        return View(Todos);
+%    }
+%}
+%// Razor File
+%@Page
+%@{ ViewData["Title"] = "ViewComponent"; }
+%<vc:to-do-list></vc:to-do-list>
+%@await Component.InvokeAsync("ToDoList")
+%\end{lstlisting}
+
+\subsubsection{ViewData / TempData}
+Mit Attribut Gekennzeichnete Daten werden allen Razor-Files im Render-Baum übergeben.\\
+\textbf{ViewData/ViewBag:} Daten an Layout\\
+\textbf{TempData:} Überlebt redirect, Middleware nötig
+
+\subsection{Pages}
+Alternative / vereinfachte Variante vom MVC. Router muss nicht konfiguriert. Best-Practices für Serverside-Rendering.
+\textbf{Kombination MVC:} Static Seite mit Pages, REST-API mit MVC.
+
+%\subsubsection{Routing}
+%WebApp generiert anhand der URL eine Antwort.
+%Bei einem Aufruf wird im Folder \textit{/pages/} nach einer Page gesucht und ausgeführt (\textbf{case insensitive}):\\
+%\textit{/add} $\rightarrow$  \textit{/pages/add.cshtml}
+
+\subsubsection{Model (*.cshtml.cs:)}
+Pro HTTP-Verb kann im VM eine Funktion definiert werden, die davor aufgerufen wird
+\begin{lstlisting}[style=CSharp]
+public class HelloWorldModel : PageModel {
+  public int Id { get; set; }
+  public void OnPost(int id) {
+      Id = id; } }
+// oder ohne kopieren der Properties
+public class HelloWorldModel : PageModel {
+  [BindProperty(SupportsGet = true)]
+  public int Id { get; set; } } }
+\end{lstlisting}
+
+\subsubsection{View (*.cshtml)}
+\textbf{@page}: Definiert das Razor-File als Page\\
+\textbf{@page ''/test'':} Überschreibt Default-Routing
+\begin{lstlisting}[style=CSharp]
+@page "/test/{id:int?}"
+@model HelloWorldModel
+@{ ViewData["Title"] = "HelloWorld"; }
+<h1>@Model.HelloWorld</h1>
+\end{lstlisting}
+
+\subsection{AJAX}
+
+\subsubsection{Handlers}
+Pages können Actions als handler anbieten.\\
+\textbf{Namenskonvention:} \textit{On[Method][Name]}
+\begin{lstlisting}[style=CSharp]
+public IActionResult OnPostEcho(strong echoText) {
+    return this.Content(echoText); }
+// Ajax Razor Form
+<form asp-page="Ajax" asp-page-handler="Echo" data-ajax="true" data-ajax-method="POST" data-ajax-mode="replace" data-ajax-update="#output">
+  <input name="echoText" /><input type="submit" />
+</form>
+\end{lstlisting}
+\textbf{Zugriff:} \textit{[Method]: /[Page]?handler=[Handler]}\\
+Bsp: POST auf \textit{/Ajax?handler=echo}
+%\textbf{Rückgabewerte (IActionResult)}
+%\begin{itemize}
+%    \item ContentResult: String-, Json-, EmptyResult
+%    \item Status: NotFoundResult, StatusCodeResult
+%    \item Redirects: RedirectToPage, RedirectToPagePermanent
+%    \item Hilfsmethoden: Page(), Partial(), Content()
+%\end{itemize}
+
+\subsection{Entity Framework}
+\textbf{Code First benötigt:} Type Discovery (Welche Klassen in die DB), Connection String (Wohin mit Daten), DbContext (Entry Point)\\
+\textbf{Migration:} EF Core erlauft keine automatische Migrationen von Model Änderungen mehr. Aktuell nur über Konsole: \textit{dotnet ef database update}
+
+\subsubsection{Entity Konventionen}
+\textbf{public [long/string] Id:} automatisch PK\\
+\textbf{public virtual ApplicationUser Customer:} Wird als Navigation Property erkannt\\
+\textbf{public [long/string] CustomerId:} Wird als Foreign Key für das Customer Property erkannt
+
+\subsubsection{Wichtige Attribute}
+\textbf{[Required]:} NotNull in DB,
+\textbf{[NotMapped]:} Nicht in DB geschrieben,
+\textbf{[Key]:} Definiert den PK,
+\textbf{[MaxLength(10)]:} Allokationsgrösse in DB
+
+\subsection{Validierung}
+
+\subsubsection{Schritt 1: Annotieren der Klassen}
+\textbf{Attribute:}
+\texttt{\tiny [StringLength(60, MinimumLength=3)]},\\
+\texttt{\tiny [RegularExpression(@"..")]},\texttt{\tiny [DataType(DataType.Date)]}
+\texttt{\tiny [Required]}. Attribute \underline{sind kombinierbar}
+
+\subsubsection{Schritt 2: Razor anpassen}
+\textbf{Validation ins DOM einfügen:}
+\begin{lstlisting}[style=CSharp]
+<div asp-validation-summary="ModelOnly"></div>
+<span asp-validation-for="Item.Name"></span>
+\end{lstlisting}
+\textbf{JQuery Validation einbinden:}
+\begin{lstlisting}[style=CSharp]
+@section Scripts {
+    <script src=".../jquery.validate.js"></script> }
+\end{lstlisting}
+
+\subsubsection{Schritt 3: Serverseitige Validierung}
+\begin{lstlisting}[style=CSharp]
+[HttpPost]
+public ActionResult Index(Order order) {
+    if(ModelState.IsValid) {
+        order.CustomerId = User.Identity.GetUserId();
+        _db.Orders.Add(order); _db.SaveChanges();
+        return View("OrderOk", order);
+    } return BadRequest(); }
+\end{lstlisting}
+
+\subsection{Authentifizierung}
+\textbf{ASP.NET Identity Features:} PW Stärke, User Validator, Lockout, 2Faktor, Reset, OAuth\\
+\textbf{ASP.NET Identity Klassen:}\\
+\texttt{\tiny UserManager<ApplicationUser>},\texttt{\tiny RoleManager<IdentityRole>}
+\texttt{\tiny IAuthorizationService},
+\texttt{\tiny SingInManager}
+
+\subsubsection{Aktivierung \& Konfiguration (Startup.cs)}
+\begin{lstlisting}[style=CSharp]
+services.AddDefaultIdentity<IdentityUser>() // <- DI
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+app.UseIdentity(); // <-Middleware | Einstellungen->
+services.AddDefaultIdentity<IdentityUser>(options=>{
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 8;
+}).AddRoles<IdentityRole>()
+.AddEntityFrameworkStores<ApplicationDbContext>()
+\end{lstlisting}
+
+%\subsubsection{Anwenden}
+%\textbf{Attribute:}\\
+%\textit{[Authorize]:} User muss authentifiziert sein (Controller/Actions)\\
+%\textit{[AllowAnonymous]:} Ausnahme für spezifische Action
+%\begin{lstlisting}[style=CSharp]
+%this.User // Eingeloggter User Typ: ClaimsPrincipal
+%// CRUD Operationen über ApplicationUsers von DI
+%var user = await _userManager.GetUserAsync(User);
+%var id = _userManager.GetUserId(User);
+%\end{lstlisting}
+%\textbf{Claim:} Statement über einen User, ausgestellt von einem Identity Provider.\\
+
+\subsubsection{Authentifizierung prüfen}
+\begin{lstlisting}[style=CSharp]
+[Authorize] // <-Automatisch
+public ActionResult Create() { return View(order); }
+public ActionResult Create() { // <- Manuell
+  if(User.Identity.IsAuthenticated){ return View(..)}
+  else { return new StatusCodeResult(401); } }
+\end{lstlisting}
+
+\subsection{Authorisierung}
+\begin{lstlisting}[style=CSharp]
+// Lösung 1: Attribute:
+[Authorize(Roles = "Admin, PowerUser")]
+[Authorize(Policy = "OlderThan18")]
+// Lösung 2: Services:
+isInRole=await userManager.IsInRoleAsync(user,"Admi")
+// Lösung 3: Claims (z.B. Facebook)
+User.HasClaim(ClaimTypes.Role, "Admin")
+\end{lstlisting}
+
+\subsubsection{Authorizierung mit Razor}
+\begin{lstlisting}[style=CSharp]
+@inject UserManager<ApplicationUser> manager;
+@inject ApplicationDbContext context;
+@{  var user = await manager.GetUserAsync(User);
+ if(user != null && await manager.IsInRoleAsync(
+    user, "Admin")){ /* ... */ } }
+\end{lstlisting}
+
+\subsection{Testing}
+\begin{lstlisting}[style=CSharp]
+public class UnitTest {
+    [Fact]
+    public void TestName() { /* ... */ }}
+\end{lstlisting}
+%
+%\subsection{App Secrets}
+%Ermöglicht es, Secrets in einem separaten File zu persistieren.
+%
+
+\subsection{API Routing}
+\begin{lstlisting}[style=CSharp]
+[Route("api/[controller]")]
+public class ValuesController : Controller{
+  [HttpGet]
+  public IEnumerable<Value> Get(){
+    return _valueService.All(); }
+  [HttpGet("{id}")]
+  public Value Get(int id) {
+    return _valueService.Get(id); }
+  [HttpPost]
+  public void Post([FromBody]Value value) {
+    _valueService.Add(value);}
+\end{lstlisting}
+
+
+
+
+
+
+\subsection{BMI Rechner}
+\textbf{Startup.cs}:
+\begin{lstlisting}[style=CSharp]
+public class Startup {
+  public Startup(IConfiguration configuration){
+    Configuration = configuration; }
+  public IConfiguration Configuration { get; }
+  public void ConfigureServices(IServiceCollection services){
+    services.AddMvc();
+    services.AddSingleton<IBmiService, BmiService>(); }
+  public void Configure(IApplicationBuilder app, IWebHostEnvironment env){
+    app.UseStaticFiles();
+    app.UseRouting();
+    app.UseEndpoints(endpoints => {
+      endpoints.MapRazorPages();}); } }
+\end{lstlisting}
+
+\textbf{Bmi.cshtml}:
+\begin{lstlisting}[style=CSharp]
+@page
+@model BmiModel
+@{
+    ViewData["Title"] = "Bmi";
+    Layout = null;
+
+    double value = Model.BmiValue;
+
+
+
+}
+
+
+\end{lstlisting}
+
+
+
+
+\textbf{Bmi.cshtml.cs}:
+\begin{lstlisting}[style=CSharp]
+public class BmiModel : PageModel {
+  private readonly IBmiService _bmiService;
+  public BmiModel(IBmiService bmiService) {
+    _bmiService = bmiService; }
+  [BindProperty(SupportsGet = true)]
+  public Bmi Bmi { get; set; }
+  public double BmiValue { get; set; }
+  public void OnGet() {
+    BmiValue = _bmiService.Calculcate(Bmi);}
+  public void OnPost(Bmi bmi) {
+    Bmi = bmi;
+    BmiValue = _bmiService.Calculcate(Bmi);}}
+\end{lstlisting}
+
+\textbf{Other stuff:}
+\begin{lstlisting}[style=CSharp]
+public class Bmi {
+  [Range(0, 300)]
+  [Display(Name = "Gewicht in kg")]
+  public double Weight { get; set; }
+
+  [Range(30, 250)]
+  [Display(Name = "Höhe in cm")]
+  public double Height { get; set; }}
+
+public interface IBmiService {
+    double Calculcate(Bmi data); }
+
+public class BmiService : IBmiService {
+  public double Calculcate(Bmi data) {
+    return Math.Round(data.Weight / Math.Pow((data.Height / 100), 2), 2); }}
+\end{lstlisting}
+
+
+
+
+
+
+\vfill
+$ $
