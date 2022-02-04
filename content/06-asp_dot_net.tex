@@ -270,22 +270,20 @@ public class UnitTest {
 %Ermöglicht es, Secrets in einem separaten File zu persistieren.
 %
 
-\subsection{API Routing}
-\begin{lstlisting}[style=CSharp]
-[Route("api/[controller]")]
-public class ValuesController : Controller{
-  [HttpGet]
-  public IEnumerable<Value> Get(){
-    return _valueService.All(); }
-  [HttpGet("{id}")]
-  public Value Get(int id) {
-    return _valueService.Get(id); }
-  [HttpPost]
-  public void Post([FromBody]Value value) {
-    _valueService.Add(value);}
-\end{lstlisting}
-
-
+%\subsection{API Routing}
+%\begin{lstlisting}[style=CSharp]
+%[Route("api/[controller]")]
+%public class ValuesController : Controller{
+%  [HttpGet]
+%  public IEnumerable<Value> Get(){
+%    return _valueService.All(); }
+%  [HttpGet("{id}")]
+%  public Value Get(int id) {
+%    return _valueService.Get(id); }
+%  [HttpPost]
+%  public void Post([FromBody]Value value) {
+%    _valueService.Add(value);}
+%\end{lstlisting}
 
 
 
@@ -310,18 +308,13 @@ public class Startup {
 \textbf{Bmi.cshtml}:
 \begin{lstlisting}[style=CSharp]
 @page
-@model BmiModel
-@{
-    ViewData["Title"] = "Bmi";
-    Layout = null;
-
-    double value = Model.BmiValue;
-
-
-
-}
-
-
+@model BmiRechner.Pages.BmiModel
+@{  ViewData["Title"] = "Bmi";
+Layout = null; }
+@if (Model.WrongData) {
+    <strong>Falsche Daten!</strong>
+} else {
+<p>@Model.Result</p> }
 \end{lstlisting}
 
 
@@ -362,10 +355,37 @@ public class BmiService : IBmiService {
     return Math.Round(data.Weight / Math.Pow((data.Height / 100), 2), 2); }}
 \end{lstlisting}
 
+\textbf{BMI API}
+\begin{lstlisting}[style=CSharp]
+[Route("api/[controller]")]
+[ApiController]
+public class BmiController : ControllerBase {
+private readonly IBmiService _bmiService;
+public BmiController(IBmiService bmiService) {
+        _bmiService = bmiService; }
+// [HttpGet("{id}")]
+// public Value Get(int id)
+// [HttpPost][Route("/foo")]
+[HttpGet]
+public double Calculate([FromQuery]Bmi data) {
+return _bmiService.Calculcate(data); }}
+\end{lstlisting}
 
-
-
-
-
-\vfill
-$ $
+\textbf{BMI API Config mit Swagger}
+\begin{lstlisting}[style=CSharp]
+public void
+  ConfigureServices(IServiceCollection
+  services) {
+  services.AddMvc();
+  services.AddSingleton<IBmiService,
+  BmiService>();
+services.AddSwaggerGen(c => { c.SwaggerDoc("v1", new OpenApiInfo {
+     Title = "My API", Version = "v1" });
+}    });
+public void Configure(...) { app.UseHttpsRedirection(); app.UseStaticFiles(); app.UseCookiePolicy(); app.UseSwagger(); app.UseSwaggerUI(c => {
+   c.SwaggerEndpoint("/swagger/v1/swagger.json"
+   "My API V1"); });
+  app.UseRouting();
+  app.UseEndpoints(endpoints => {
+    endpoints.MapControllers();  });
+\end{lstlisting}
